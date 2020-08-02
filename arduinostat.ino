@@ -1,37 +1,56 @@
-//
+// 
 // Based on the paper "Microcontroller based potentiostat"
 // DOI: 10.1021/acs.jchemed.5b00961 (J. Chem. Educ. 2016, 93, 1320−1322)
-//
+// 
 
 // PWM and ADC pin on arduino uno
-int a = 11;
-float ct = A0; //ADC
+int DAC_OUT = 11;   // PWM
+float ADC_IN = A0;  // ADC
 
-int vals[] = {0, 64, 127, 191, 255};
+float Potstep = 0.0078; // fixed due to the DAC resolution
+int vevals[] = {10,25,50,100,200,250,300}; //multiple scan rates values (mV/s)
+int const count = 6;
+long intervalos[count];
 
 float c = 0;
-int val = -1;
-int inPos = -1;
+int inPos = -1; 
+int val = 0;
 char inStr[2];
-
+bool halt = false;
 
 void setup() {
   TCCR1B = TCCR1B & B11111000 | B00000001; //Set dividers to change PWM frequency
   Serial.begin(9600);
-  pinMode(a,OUTPUT);
-  pinMode(ct,INPUT);
+  pinMode(DAC_OUT,OUTPUT);
+  pinMode(ADC_IN,INPUT);
 
   // reset val
-  val = -1;
+  val = 0;
+    
+  //  populate intervalos
+  for(int pos = 0; pos < count; pos++)
+  {
+    intervalos[pos]=(1000000L/((vevals[pos])*128L));
+  }
 }
 
 void loop() {
   // Output headers
-  Serial.print("pos");
-  Serial.print(",");
+  halt = false;
+  digitalWrite(LED_BUILTIN, HIGH);
+  delay(100);
+  digitalWrite(LED_BUILTIN, LOW);
+  delay(100);
+  
   Serial.print("Voltage");
   Serial.print(",");
   Serial.print("Current");
+  Serial.print(",");
+  Serial.print("pos");
+  Serial.print(",");
+  Serial.print("SR");
+  Serial.print(",");
+  Serial.print("step");
   Serial.print(",");
   Serial.println();
     
@@ -45,22 +64,12 @@ void loop() {
       sprintf(inStr, "%c", inChar);
       consumeInput(); // Clear serial input
       inPos = atoi(inStr);
-      if (inPos >= 0 && inPos < 5) 
+      if (inPos >= 0 && inPos <= 5) 
       {
-        while (Serial.available() == 0)
-        {
-          Serial.print(inPos);
-          Serial.print(",");
-          val = vals[inPos];
-          analogWrite(a,val);
-          Serial.print(val);
-          delay(500);
-          c = analogRead(ct);
-          Serial.print(",");
-          Serial.print(c);
-          Serial.print(",");
-          Serial.println();
-        }
+        // sweep potential from -1 V to 1 V and 
+        // read corresponding current
+        forwardScan(inPos);
+        reverseScan(inPos);
       }
       else 
       {
@@ -85,4 +94,51 @@ void consumeInput() {
   {
     Serial.read();
   }
+}
+
+
+void forwardScan(int pos) {
+  for(val = 0; val <= 255; val++)
+  {
+    if(Serial.available() > 0)
+    {
+      consumeInput(); // Clear serial input
+      halt = true;
+      break;
+    }
+    analogWrite(DAC_OUT,val);
+    Serial.print(val);
+    delay(intervalos[pos]);
+    c = analogRead(ADC_IN);
+    printToSerial(c, val, pos);
+  }
+}
+
+
+void reverseScan(int pos) {
+  for(val = 255; val >= 0; val--)
+  {
+    if(halt){break;}
+    analogWrite(DAC_OUT,val);
+    Serial.print(val);
+    delay(intervalos[pos]);
+    c = analogRead(ADC_IN);
+    printToSerial(c, val, pos);
+  }
+}
+
+void printToSerial(int c, int val, int pos) {
+    if (val % 3 == 0)
+    {
+      Serial.print(",");
+      Serial.print(c);
+      Serial.print(",");
+      Serial.print(pos);
+      Serial.print(",");
+      Serial.print(vevals[pos]);
+      Serial.print(",");  
+      Serial.print(intervalos[pos]);
+      Serial.print(",");
+      Serial.println();
+    }
 }
