@@ -4,9 +4,11 @@
 // 
 
 // PWM and ADC pin on arduino uno
-int DAC_OUT_R = 10;     // PWM
+int DAC_OUT_R = 9;    // PWM
+int DAC_OUT_W = 10;     // PWM
+
 float ADC_IN_C = A0;    // ADC (Current)
-float ADC_IN_V = A1;    // ADC (Current)
+float ADC_IN_V = A1;    // ADC (Voltage)
 
 float potstep = 0.019608; // fixed due to the DAC resolution (1/0.019608 == 51)
 int srs[] = {10,25,50,100,200,300}; //multiple scan rates values (mV/s)
@@ -27,6 +29,7 @@ String inputstr;
 unsigned int halt;            // 0 for stop and 1 for run       
 unsigned int sr;              // 0, 1, 2, 3, 4, and 5 
 unsigned int mode;            // 0 for lsv and 1 for cv
+int pcom;            // should be smaller than end point (5, 250)
 int pstart;          // should be smaller than end point (0, 255)
 int pend;            // should be larger than start point (0, 255)
 
@@ -36,6 +39,7 @@ void setup() {
   Serial.println("==== setting up =====");
   
   pinMode(DAC_OUT_R,OUTPUT);
+  pinMode(DAC_OUT_W,OUTPUT);
   // Set PWM frequency to 31 kHz for pin 9 and 10 (Timer1)
   TCCR1B = TCCR1B & 0b11111000 | 0b00000001; //Set dividers to change PWM frequency
   
@@ -47,6 +51,7 @@ void setup() {
   
   // get the reference voltages
   analogWrite(DAC_OUT_R,127); // set potential and
+  analogWrite(DAC_OUT_W,127); // set potential and
   delay(200); // wait
   v = analogRead(ADC_IN_V);
   v = v * 255.0 / 1023;
@@ -69,11 +74,12 @@ void loop() {
   // Output headers
   halt = 0;
   digitalWrite(LED_BUILTIN, HIGH);
-  delay(100);
+  delay(500);
   digitalWrite(LED_BUILTIN, LOW);
-  analogWrite(DAC_OUT_R, 130); // set potential
+  delay(500);
   
-  delay(100);
+  analogWrite(DAC_OUT_R, 127); // set potential
+  analogWrite(DAC_OUT_W, 127); // set potential
   
   inputs = get_inputs();
   if (inputs > 0 && halt == 0 && pend > pstart) {
@@ -122,6 +128,7 @@ void forwardScan(unsigned int pos) {
       break;
     }
     analogWrite(DAC_OUT_R,val); // set potential and
+    analogWrite(DAC_OUT_W,pcom); // set potential and
     delay(intervals[pos]); // wait
 
     // get data and average
@@ -148,6 +155,7 @@ void reverseScan(unsigned int pos) {
     }
     
     analogWrite(DAC_OUT_R,val);
+    analogWrite(DAC_OUT_W,pcom); // set potential and
     delay(intervals[pos]); // wait
 
     // get data and average
@@ -214,7 +222,7 @@ int get_inputs() {
     }
     
     // s => "sr,halt,mode,pstart,pend"
-    result = sscanf(inputstr.c_str(), "%u,%u,%u,%d,%d\r", &sr, &halt ,&mode, &pstart, &pend);
+    result = sscanf(inputstr.c_str(), "%u,%u,%u,%d,%d,%d\r", &sr, &halt ,&mode, &pcom, &pstart, &pend);
   }
   
   return result;
