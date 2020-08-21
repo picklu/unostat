@@ -91,40 +91,38 @@ void loop() {
       case 0:
         ss = 1;
         forwardScan(sr);
-        ss = 0;
         break;
 
       // if mode = 1 then reverse scan
       case 1:
         ss = 1;
         reverseScan(sr);
-        ss = 0;
         break;
 
       // if mode = 2 then reverse scan follows forward scan (cycle)
       case 2:
         ss = 1;
         forwardScan(sr);
+        ss = 1;
         reverseScan(sr);
-        ss = 0;
         break;
 
       // if mode = 3 then forward scan follows reverse scan (cycle)
       case 3:
         ss = 1;
         reverseScan(sr);
+        ss = 1;
         forwardScan(sr);
-        ss = 0;
         break;
 
       // if mode = 4 or more then reverse scan follows forward scan ((mode -2)  no. of cycles)
       default:
-        ss = 1;
         for (int i = 0; i < mode - 2; i++) {
+          ss = 1;
           forwardScan(sr);
+          ss = 1;
           reverseScan(sr);
         }
-        ss = 0;
     }
   }  
 }
@@ -152,6 +150,9 @@ void forwardScan(unsigned int pos) {
     // send data to the serial    
     broadcast_data(pos);
   }
+  
+  ss = 0;
+  broadcast_data(pos);
 }
 
 
@@ -179,6 +180,10 @@ void reverseScan(unsigned int pos) {
     // send data to the serial
     broadcast_data(pos);
   }
+  
+  ss = 0;
+  broadcast_data(pos);
+
 }
 
 float average(int numbers[], int count) {
