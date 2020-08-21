@@ -18,6 +18,7 @@ long intervals[count];
 int cdata[data_count];
 float avg_data;
 
+int ss = 0;
 float c = 0;
 float v = 0;
 float r = 0;
@@ -88,32 +89,42 @@ void loop() {
     switch(mode) {
       // if mode = 0 then forward scan
       case 0:
+        ss = 1;
         forwardScan(sr);
+        ss = 0;
         break;
 
       // if mode = 1 then reverse scan
       case 1:
+        ss = 1;
         reverseScan(sr);
+        ss = 0;
         break;
 
       // if mode = 2 then reverse scan follows forward scan (cycle)
       case 2:
+        ss = 1;
         forwardScan(sr);
         reverseScan(sr);
+        ss = 0;
         break;
 
       // if mode = 3 then forward scan follows reverse scan (cycle)
       case 3:
+        ss = 1;
         reverseScan(sr);
         forwardScan(sr);
+        ss = 0;
         break;
 
       // if mode = 4 or more then reverse scan follows forward scan ((mode -2)  no. of cycles)
       default:
+        ss = 1;
         for (int i = 0; i < mode - 2; i++) {
           forwardScan(sr);
           reverseScan(sr);
         }
+        ss = 0;
     }
   }  
 }
@@ -179,20 +190,24 @@ float average(int numbers[], int count) {
 }
 
 void broadcast_header() {
-  Serial.print("Voltage");
+  Serial.print("ss");
   Serial.print(",");
-  Serial.print("Current");
+  Serial.print("vo");
   Serial.print(",");
-  Serial.print("vin");
+  Serial.print("c");
+  Serial.print(",");
+  Serial.print("vi");
   Serial.print(",");
   Serial.print("sr");
   Serial.print(",");
-  Serial.print("delay");
+  Serial.print("dl");
   Serial.print(",");
   Serial.println();
 }
 
 void broadcast_data(int pos) {
+  Serial.print(ss);
+  Serial.print(",");
   Serial.print(val);
   Serial.print(",");
   Serial.print(avg_data);
