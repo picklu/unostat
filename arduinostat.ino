@@ -18,7 +18,6 @@ long intervals[count];
 int cdata[data_count];
 float avg_data;
 
-int ss = 0;
 float c = 0;
 float v = 0;
 float r = 0;
@@ -37,7 +36,6 @@ int pend;            // should be larger than start point (0, 255)
 void setup() {
   // setting up the device
   Serial.begin(9600);
-  Serial.println("==== setting up =====");
   
   pinMode(DAC_OUT_R,OUTPUT);
   pinMode(DAC_OUT_W,OUTPUT);
@@ -66,13 +64,11 @@ void setup() {
     intervals[pos] = 1000000L /(srs[pos] * 51L);
   }
 
-  Serial.println("======= done ========");
-  broadcast_header();
+  Serial.println("ready,,,,,,");
   delay(500);
 }
 
 void loop() {
-  // Output headers
   halt = 0;
   digitalWrite(LED_BUILTIN, HIGH);
   delay(500);
@@ -89,39 +85,36 @@ void loop() {
     switch(mode) {
       // if mode = 0 then forward scan
       case 0:
-        ss = 1;
         forwardScan(sr);
+        broadcast(0, false);
         break;
 
       // if mode = 1 then reverse scan
       case 1:
-        ss = 1;
         reverseScan(sr);
+        broadcast(0, false);
         break;
 
       // if mode = 2 then reverse scan follows forward scan (cycle)
       case 2:
-        ss = 1;
         forwardScan(sr);
-        ss = 1;
         reverseScan(sr);
+        broadcast(0, false);
         break;
 
       // if mode = 3 then forward scan follows reverse scan (cycle)
       case 3:
-        ss = 1;
         reverseScan(sr);
-        ss = 1;
         forwardScan(sr);
+        broadcast(0, false);
         break;
 
       // if mode = 4 or more then reverse scan follows forward scan ((mode -2)  no. of cycles)
       default:
         for (int i = 0; i < mode - 2; i++) {
-          ss = 1;
           forwardScan(sr);
-          ss = 1;
           reverseScan(sr);
+          broadcast(0, false);
         }
     }
   }  
@@ -148,11 +141,8 @@ void forwardScan(unsigned int pos) {
     avg_data = average(cdata, data_count);
     
     // send data to the serial    
-    broadcast_data(pos);
+    broadcast(pos, true);
   }
-  
-  ss = 0;
-  broadcast_data(pos);
 }
 
 
@@ -178,12 +168,8 @@ void reverseScan(unsigned int pos) {
     avg_data = average(cdata, data_count);
 
     // send data to the serial
-    broadcast_data(pos);
+    broadcast(pos, true);
   }
-  
-  ss = 0;
-  broadcast_data(pos);
-
 }
 
 float average(int numbers[], int count) {
@@ -194,24 +180,8 @@ float average(int numbers[], int count) {
   return ((float)sum / count);
 }
 
-void broadcast_header() {
-  Serial.print("ss");
-  Serial.print(",");
-  Serial.print("vo");
-  Serial.print(",");
-  Serial.print("c");
-  Serial.print(",");
-  Serial.print("vi");
-  Serial.print(",");
-  Serial.print("sr");
-  Serial.print(",");
-  Serial.print("dl");
-  Serial.print(",");
-  Serial.println();
-}
-
-void broadcast_data(int pos) {
-  Serial.print(ss);
+void broadcast(int pos, bool is_running) {
+  (is_running) ? Serial.print(1) : Serial.print(0);
   Serial.print(",");
   Serial.print(val);
   Serial.print(",");
@@ -234,7 +204,7 @@ int get_inputs() {
     while (Serial.available())
     {
       delay(10);
-      if (Serial.available() >0)
+      if (Serial.available() > 0)
       {
         char c = Serial.read();
         inputstr = String(inputstr + c);
