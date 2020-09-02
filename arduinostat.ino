@@ -20,20 +20,17 @@ int inputs = 0;
 
 String inputstr;
 
-unsigned int interval;        // delay time for each step
-unsigned int halt;            // 0 for stop and 1 for run            
-unsigned int mode;            // 0 for lsv and 1 for cv
-int ncycles;                  // number of cycles from 0 to onward
-int pcom = 127;      // should be smaller than end point (5, 250)
-int pstart;          // should be smaller than end point (0, 255)
-int pend;            // should be larger than start point (0, 255)
+int interval = 0;        // delay time for each step
+int halt = 1;            // 0 for stop and 1 for run            
+int mode = 0;            // 0 for lsv and 1 for cv
+int ncycles = 0;         // number of cycles from 0 to onward
+int pcom = 127;          // should be smaller than end point (5, 250)
+int pstart = 0;          // should be smaller than end point (0, 255)
+int pend = 0;            // should be larger than start point (0, 255)
 
-
-// fixed due to the DAC resolution (1/0.019608 == 51)
-// float potstep = 0.019608; 
 int const ndata = 10;
 int cdata[ndata];
-float avgc;   // average of the input/ADC
+float avgc = 0;   // average of the input/ADC
 
 void setup() {
   // setting up the device
@@ -50,16 +47,12 @@ void setup() {
   pinMode(ADC_IN_V,INPUT);
   delay(500);
   
-  // get the reference voltages
-  analogWrite(DAC_OUT_R,pcom); // set potential and
-  analogWrite(DAC_OUT_W,pcom); // set potential and
-  delay(200); // wait
-  v = analogRead(ADC_IN_V);
-  v = v * 255.0 / 1023;
-  
-  // reset pot
-  pot = 0;
+  // reset potentails and inputs
+  softReset();
 
+  // get the reference voltages
+  resetPotentials();
+  
   Serial.println("ready,,,,,,");
   delay(500);
 }
@@ -70,10 +63,7 @@ void loop() {
   delay(500);
   digitalWrite(LED_BUILTIN, LOW);
   delay(500);
-  
-  analogWrite(DAC_OUT_R, pcom); // set potential
-  analogWrite(DAC_OUT_W, pcom); // set potential
-  
+
   inputs = get_inputs();
   if (inputs > 0 && halt == 0) {
     inputs = 0;
@@ -107,14 +97,11 @@ void loop() {
 void forwardScanLSV() {
   for(pot = pstart; pot <= pend; pot++)
   {
+    // if halt then reset
     inputs = get_inputs();
-    if (inputs > 0 && halt == 1) {
-      inputs = 0;
-      halt = 0;
-      break;
-    }
+    if (inputs > 0 && halt == 1) { break; }
     
-    // data write and read    
+    // else data write and read    
     dataReadWrite();
     
     // send data to the serial    
@@ -126,14 +113,11 @@ void forwardScanLSV() {
 void reverseScanLSV() {
   for(pot = pstart; pot >= pend; pot--)
   {
+    // if halt then reset
     inputs = get_inputs();
-    if (inputs > 0 && halt == 1) {
-      inputs = 0;
-      halt = 0;
-      break;
-    }
+    if (inputs > 0 && halt == 1) { break; }
 
-    // data write and read    
+    // else data write and read    
     dataReadWrite();
 
     // send data to the serial
@@ -145,14 +129,11 @@ void reverseScanLSV() {
 void forwardScanCV() {
   for(pot = pstart; pot <= pend; pot++)
   {
+    // if halt then reset
     inputs = get_inputs();
-    if (inputs > 0 && halt == 1) {
-      inputs = 0;
-      halt = 0;
-      break;
-    }
+    if (inputs > 0 && halt == 1) { break; }
     
-    // data write and read    
+    // else data write and read    
     dataReadWrite();
     
     // send data to the serial    
@@ -161,14 +142,11 @@ void forwardScanCV() {
 
   for(pot = pend; pot >= pstart; pot--)
   {
+    // if halt then reset
     inputs = get_inputs();
-    if (inputs > 0 && halt == 1) {
-      inputs = 0;
-      halt = 0;
-      break;
-    }
+    if (inputs > 0 && halt == 1) { break; }
     
-    // data write and read    
+    // else data write and read    
     dataReadWrite();
     
     // send data to the serial    
@@ -181,14 +159,11 @@ void forwardScanCV() {
 void reverseScanCV() {
   for(pot = pstart; pot >= pend; pot--)
   {
+    // if halt then reset
     inputs = get_inputs();
-    if (inputs > 0 && halt == 1) {
-      inputs = 0;
-      halt = 0;
-      break;
-    }
+    if (inputs > 0 && halt == 1) { break; }
 
-    // data write and read    
+    // else data write and read    
     dataReadWrite();
 
     // send data to the serial
@@ -197,21 +172,17 @@ void reverseScanCV() {
 
   for(pot = pend; pot <= pstart; pot++)
   {
+    // if halt then reset
     inputs = get_inputs();
-    if (inputs > 0 && halt == 1) {
-      inputs = 0;
-      halt = 0;
-      break;
-    }
+    if (inputs > 0 && halt == 1) { break; }
 
-    // data write and read    
+    // else data write and read    
     dataReadWrite();
 
     // send data to the serial
     broadcast(true);
   }
 }
-
 
 float average(int numbers[], int count) {
   int sum = 0;
@@ -222,7 +193,13 @@ float average(int numbers[], int count) {
 }
 
 void broadcast(bool is_running) {
-  (is_running) ? Serial.print(1) : Serial.print(0);
+  if (is_running) {
+    Serial.print(1);
+  } else {
+    softReset();
+    resetPotentials();
+    Serial.print(0);
+  }
   Serial.print(",");
   Serial.print(pot);
   Serial.print(",");
@@ -248,9 +225,28 @@ void dataReadWrite() {
   avgc = average(cdata, ndata);
 }
 
+void softReset() {
+  interval = 0;
+  halt = 1;
+  mode = 0;
+  ncycles = 0;
+  pcom = 127;
+  pstart = 0;
+  pend = 0;
+  avgc = 0;
+  pot = 0;
+}
+
+void resetPotentials() {
+  analogWrite(DAC_OUT_R,pcom); // set potential and
+  analogWrite(DAC_OUT_W,pcom); // set potential and
+  delay(200); // wait
+  v = analogRead(ADC_IN_V);
+  v = v * 256 / 1024;
+}
+
 int get_inputs() {
   int result = 0;
-  
   if (Serial.available()) {
     inputstr = String("");
     while (Serial.available())
@@ -264,7 +260,9 @@ int get_inputs() {
     }
     
     // s => "interval,halt,mode, ncycles, pcom, pstart,pend"
-    result = sscanf(inputstr.c_str(), "%u,%u,%u,%d,%d,%d,%d\r", &interval, &halt ,&mode, &ncycles, &pcom, &pstart, &pend);
+    result = sscanf(inputstr.c_str(), 
+      "%d,%d,%d,%d,%d,%d,%d\r", 
+      &interval, &halt ,&mode, &ncycles, &pcom, &pstart, &pend);
   }
   
   return result;
