@@ -30,9 +30,9 @@ unsigned int halt;            // 0 for stop and 1 for run
 unsigned int sr;              // 5 to 300 mV       
 unsigned int mode;            // 0 for lsv and 1 for cv
 int ncycles;        // number of cycles from 0 to onward
-int pcom;            // should be smaller than end point (5, 250)
 int pstart;          // should be smaller than end point (0, 255)
 int pend;            // should be larger than start point (0, 255)
+int pcom = 127;            // should be smaller than end point (5, 250)
 
 void setup() {
   // setting up the device
@@ -50,8 +50,8 @@ void setup() {
   delay(500);
   
   // get the reference voltages
-  analogWrite(DAC_OUT_R,127); // set potential and
-  analogWrite(DAC_OUT_W,127); // set potential and
+  analogWrite(DAC_OUT_R,pcom); // set potential and
+  analogWrite(DAC_OUT_W,pcom); // set potential and
   delay(200); // wait
   v = analogRead(ADC_IN_V);
   v = v * 255.0 / 1023;
