@@ -95,9 +95,9 @@ void loop() {
 
 // pstart < pend
 void forwardScanLSV() {
-  for(pot = pstart; pot <= pend; pot++)
+  for(pot = pstart; pot <= pend && halt == 0; pot++)
   {
-    // if halt then reset
+    // if halt then break
     inputs = get_inputs();
     if (inputs > 0 && halt == 1) { break; }
     
@@ -111,9 +111,9 @@ void forwardScanLSV() {
 
 // pstart > pend
 void reverseScanLSV() {
-  for(pot = pstart; pot >= pend; pot--)
+  for(pot = pstart; pot >= pend && halt == 0; pot--)
   {
-    // if halt then reset
+    // if halt then break
     inputs = get_inputs();
     if (inputs > 0 && halt == 1) { break; }
 
@@ -127,9 +127,9 @@ void reverseScanLSV() {
 
 // pstart  < pend
 void forwardScanCV() {
-  for(pot = pstart; pot <= pend; pot++)
+  for(pot = pstart; pot <= pend && halt == 0; pot++)
   {
-    // if halt then reset
+    // if halt then break
     inputs = get_inputs();
     if (inputs > 0 && halt == 1) { break; }
     
@@ -140,9 +140,9 @@ void forwardScanCV() {
     broadcast(true);
   }
 
-  for(pot = pend; pot >= pstart; pot--)
+  for(pot = pend; pot >= pstart && halt == 0; pot--)
   {
-    // if halt then reset
+    // if halt then break
     inputs = get_inputs();
     if (inputs > 0 && halt == 1) { break; }
     
@@ -154,12 +154,11 @@ void forwardScanCV() {
   }
 }
 
-
 // pstart > pend
 void reverseScanCV() {
-  for(pot = pstart; pot >= pend; pot--)
+  for(pot = pstart; pot >= pend && halt == 0; pot--)
   {
-    // if halt then reset
+    // if halt then break
     inputs = get_inputs();
     if (inputs > 0 && halt == 1) { break; }
 
@@ -170,9 +169,9 @@ void reverseScanCV() {
     broadcast(true);
   }
 
-  for(pot = pend; pot <= pstart; pot++)
+  for(pot = pend; pot <= pstart && halt == 0; pot++)
   {
-    // if halt then reset
+    // if halt then break
     inputs = get_inputs();
     if (inputs > 0 && halt == 1) { break; }
 
@@ -240,7 +239,7 @@ void softReset() {
 void resetPotentials() {
   analogWrite(DAC_OUT_R,pcom); // set potential and
   analogWrite(DAC_OUT_W,pcom); // set potential and
-  delay(200); // wait
+  delay(50); // wait
   v = analogRead(ADC_IN_V);
   v = v * 256 / 1024;
 }
