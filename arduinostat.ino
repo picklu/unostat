@@ -203,8 +203,8 @@ float average(int numbers[], int count) {
 }
 
 void dataReadWrite() {
-  analogWrite(DAC_OUT_R,rvdgt);
-  analogWrite(DAC_OUT_W,pcom); // set rvdgtential and
+  analogWrite(DAC_OUT_R,rvdgt); // set potential at the RE
+  analogWrite(DAC_OUT_W,pcom);  // set potential at the WE
   delay(interval); // wait
 
   // get data and average
