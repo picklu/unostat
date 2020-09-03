@@ -1,43 +1,50 @@
-// Project Name: zerostat
+// Project Name: zerostat/unostat
 // Version: 1.0
-// Description: Arduino Uno based potentiostat 
+// Description: Arduino Uno based rvdgtentiostat 
 // Author: Subrata Sarker <subrata_sarker@yahoo.com>
 // Date: 2020.08.31
 // License: MIT
+// Description: This firmware is for unostat a member of zerostat series
 
-// PWM and ADC pin on arduino uno
-int DAC_OUT_R = 9;      // PWM
-int DAC_OUT_W = 10;     // PWM
+// hardware information
+#define MODEL "UNOSTAT"
+#define VERSION "1.0"
+#define MAX_ADC 1024
+#define MAX_DAC 256
+#define BAUD_RATE 9600
 
-float ADC_IN_C = A0;    // ADC (Current)
-float ADC_IN_V = A1;    // ADC (Voltage)
+// digital outputs
+#define DAC_OUT_R 9     // PWM
+#define DAC_OUT_W 10    // PWM
 
-float c = 0;
-float v = 0;
-float r = 0;
-int pot = 0;
-int inputs = 0;
+// analog inputs
+#define ADC_IN_C A0     // ADC (Current)
+#define ADC_IN_V A1     // ADC (Voltage)
 
-String inputstr;
-
-int interval = 0;        // delay time for each step
-int halt = 1;            // 0 for stop and 1 for run            
-int mode = 0;            // 0 for lsv and 1 for cv
-int ncycles = 0;         // number of cycles from 0 to onward
-int pcom = 127;          // should be smaller than end point (5, 250)
-int pstart = 0;          // should be smaller than end point (0, 255)
-int pend = 0;            // should be larger than start point (0, 255)
-
-int const ndata = 10;
-int cdata[ndata];
-float avgc = 0;   // average of the input/ADC
+// global variables
+float cdgt = 0;         // digital value for current
+float vdgt = 0;         // digital value for voltage
+int rvdgt = 0;          // digital value for running voltage
+int inputs = 0;         // serial inputs in integer
+int interval = 0;       // delay time for each step
+int halt = 1;           // 0 for stop and 1 for run            
+int mode = 0;           // 0 for lsv and 1 for cv
+int ncycles = 0;        // number of cycles from 0 to onward
+int pcom = 127;         // should be smaller than end point (5, 250)
+int pstart = 0;         // should be smaller than end point (0, 255)
+int pend = 0;           // should be larger than start point (0, 255)
+int const ndata = 10;   // number of data points to be averaged
+int cdata[ndata];       // array of data to be averaged
+float avgc = 0;         // average of the input/ADC
+String inputstr;        // input string to cast the user input
 
 void setup() {
   // setting up the device
-  Serial.begin(9600);
+  Serial.begin(BAUD_RATE);
   
   pinMode(DAC_OUT_R,OUTPUT);
   pinMode(DAC_OUT_W,OUTPUT);
+  
   // Set PWM frequency to 31 kHz for pin 9 and 10 (Timer1)
   TCCR1B = TCCR1B & 0b11111000 | 0b00000001; //Set dividers to change PWM frequency
   
@@ -47,13 +54,17 @@ void setup() {
   pinMode(ADC_IN_V,INPUT);
   delay(500);
   
-  // reset potentails and inputs
+  // reset rvdgtentails and inputs
   softReset();
 
   // get the reference voltages
   resetPotentials();
-  
-  Serial.println("ready,,,,,,");
+ 
+  Serial.print(MODEL);
+  Serial.print(",");
+  Serial.print(VERSION);
+  Serial.print(",");
+  Serial.println("READY,,,,");
   delay(500);
 }
 
@@ -95,7 +106,7 @@ void loop() {
 
 // pstart < pend
 void forwardScanLSV() {
-  for(pot = pstart; pot <= pend && halt == 0; pot++)
+  for(rvdgt = pstart; rvdgt <= pend && halt == 0; rvdgt++)
   {
     // if halt then break
     inputs = get_inputs();
@@ -111,7 +122,7 @@ void forwardScanLSV() {
 
 // pstart > pend
 void reverseScanLSV() {
-  for(pot = pstart; pot >= pend && halt == 0; pot--)
+  for(rvdgt = pstart; rvdgt >= pend && halt == 0; rvdgt--)
   {
     // if halt then break
     inputs = get_inputs();
@@ -127,7 +138,7 @@ void reverseScanLSV() {
 
 // pstart  < pend
 void forwardScanCV() {
-  for(pot = pstart; pot <= pend && halt == 0; pot++)
+  for(rvdgt = pstart; rvdgt <= pend && halt == 0; rvdgt++)
   {
     // if halt then break
     inputs = get_inputs();
@@ -140,7 +151,7 @@ void forwardScanCV() {
     broadcast(true);
   }
 
-  for(pot = pend; pot >= pstart && halt == 0; pot--)
+  for(rvdgt = pend; rvdgt >= pstart && halt == 0; rvdgt--)
   {
     // if halt then break
     inputs = get_inputs();
@@ -156,7 +167,7 @@ void forwardScanCV() {
 
 // pstart > pend
 void reverseScanCV() {
-  for(pot = pstart; pot >= pend && halt == 0; pot--)
+  for(rvdgt = pstart; rvdgt >= pend && halt == 0; rvdgt--)
   {
     // if halt then break
     inputs = get_inputs();
@@ -169,7 +180,7 @@ void reverseScanCV() {
     broadcast(true);
   }
 
-  for(pot = pend; pot <= pstart && halt == 0; pot++)
+  for(rvdgt = pend; rvdgt <= pstart && halt == 0; rvdgt++)
   {
     // if halt then break
     inputs = get_inputs();
@@ -191,35 +202,15 @@ float average(int numbers[], int count) {
   return ((float)sum / count);
 }
 
-void broadcast(bool is_running) {
-  if (is_running) {
-    Serial.print(1);
-  } else {
-    softReset();
-    resetPotentials();
-    Serial.print(0);
-  }
-  Serial.print(",");
-  Serial.print(pot);
-  Serial.print(",");
-  Serial.print(avgc);
-  Serial.print(",");
-  Serial.print(v);
-  Serial.print(",");
-  Serial.print(interval);
-  Serial.print(",");
-  Serial.println();
-}
-
 void dataReadWrite() {
-  analogWrite(DAC_OUT_R,pot);
-  analogWrite(DAC_OUT_W,pcom); // set potential and
+  analogWrite(DAC_OUT_R,rvdgt);
+  analogWrite(DAC_OUT_W,pcom); // set rvdgtential and
   delay(interval); // wait
 
   // get data and average
   for (int i = 0; i < ndata; i++) {
-    c = analogRead(ADC_IN_C);
-    cdata[i] = c;
+    cdgt = analogRead(ADC_IN_C);
+    cdata[i] = cdgt;
   }
   avgc = average(cdata, ndata);
 }
@@ -233,15 +224,15 @@ void softReset() {
   pstart = 0;
   pend = 0;
   avgc = 0;
-  pot = 0;
+  rvdgt = 0;
 }
 
 void resetPotentials() {
-  analogWrite(DAC_OUT_R,pcom); // set potential and
-  analogWrite(DAC_OUT_W,pcom); // set potential and
+  analogWrite(DAC_OUT_R,pcom); // set rvdgtential and
+  analogWrite(DAC_OUT_W,pcom); // set rvdgtential and
   delay(50); // wait
-  v = analogRead(ADC_IN_V);
-  v = v * 256 / 1024;
+  vdgt = analogRead(ADC_IN_V);
+  vdgt = vdgt * MAX_DAC / MAX_ADC;
 }
 
 int get_inputs() {
@@ -263,6 +254,25 @@ int get_inputs() {
       "%d,%d,%d,%d,%d,%d,%d\r", 
       &interval, &halt ,&mode, &ncycles, &pcom, &pstart, &pend);
   }
-  
   return result;
+}
+
+void broadcast(bool is_running) {
+  if (is_running) {
+    Serial.print(1);
+  } else {
+    softReset();
+    resetPotentials();
+    Serial.print(0);
+  }
+  Serial.print(",");
+  Serial.print(rvdgt);
+  Serial.print(",");
+  Serial.print(avgc);
+  Serial.print(",");
+  Serial.print(vdgt);
+  Serial.print(",");
+  Serial.print(interval);
+  Serial.print(",");
+  Serial.println();
 }
