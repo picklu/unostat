@@ -54,12 +54,6 @@ void setup() {
   pinMode(ADC_IN_V,INPUT);
   delay(500);
   
-  // reset rvdgtentails and inputs
-  softReset();
-
-  // get the reference voltages
-  resetPotentials();
- 
   Serial.print(MODEL);
   Serial.print(",");
   Serial.print(VERSION);
@@ -73,6 +67,8 @@ void loop() {
   digitalWrite(LED_BUILTIN, HIGH);
   delay(500);
   digitalWrite(LED_BUILTIN, LOW);
+  broadcast(false);
+  
   delay(500);
 
   inputs = get_inputs();
@@ -206,7 +202,7 @@ void dataReadWrite() {
   analogWrite(DAC_OUT_R,rvdgt); // set potential at the RE
   analogWrite(DAC_OUT_W,pcom);  // set potential at the WE
   delay(interval); // wait
-
+  
   // get data and average
   for (int i = 0; i < ndata; i++) {
     cdgt = analogRead(ADC_IN_C);
@@ -224,15 +220,16 @@ void softReset() {
   pstart = 0;
   pend = 0;
   avgc = 0;
-  rvdgt = 0;
+  rvdgt = 127;
 }
 
 void resetPotentials() {
-  analogWrite(DAC_OUT_R,pcom); // set rvdgtential and
+  analogWrite(DAC_OUT_R,rvdgt); // set rvdgtential and
   analogWrite(DAC_OUT_W,pcom); // set rvdgtential and
   delay(50); // wait
   vdgt = analogRead(ADC_IN_V);
   vdgt = vdgt * MAX_DAC / MAX_ADC;
+  avgc = analogRead(ADC_IN_C);
 }
 
 int get_inputs() {
