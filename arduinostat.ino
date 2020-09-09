@@ -1,6 +1,6 @@
 // Project Name: zerostat/unostat
 // Version: 1.0
-// Description: Arduino Uno based rvdgtentiostat 
+// Description: Arduino Uno based potentiostat 
 // Author: Subrata Sarker <subrata_sarker@yahoo.com>
 // Date: 2020.08.31
 // License: MIT
