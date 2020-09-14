@@ -52,7 +52,7 @@ void setup() {
   pinMode(ADC_IN_V,INPUT);
   delay(250);
 
-  // Change read/write resolution to 8 bit
+  // Change read/write resolution
   analogReadResolution(ADC_BR);
   analogWriteResolution(DAC_BR);
   delay(250);
@@ -105,8 +105,9 @@ void loop() {
 
 // pstart < pend
 void forwardScanLSV() {
+  
   for(rvdgt = pstart; rvdgt <= pend && halt == 0; rvdgt += pstep)
-  {
+  {   
     // if halt then break
     inputs = get_inputs();
     if (inputs > 0 && halt == 1) { break; }
@@ -202,9 +203,10 @@ float average(int numbers[], int count) {
 }
 
 void dataReadWrite() {
+  // Change read/write resolution
   analogWrite(DAC_OUT_R,rvdgt); // set potential at the RE
   analogWrite(DAC_OUT_W,pcom);  // set potential at the WE
-  delay(interval); // wait
+  pause(); // wait
   
   // get data and average
   for (int i = 0; i < ndata; i++) {
@@ -276,4 +278,9 @@ void broadcast(bool is_running) {
   Serial.print(interval);
   Serial.print(",");
   Serial.println();
+}
+
+void pause() {
+  delay(interval - 1);
+  delayMicroseconds(780);
 }
