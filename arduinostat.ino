@@ -13,7 +13,7 @@
 #define ADC_BR 12     // ADC bit
 #define MAX_ADC 4096
 #define MAX_DAC 4096
-#define BAUD_RATE 9600
+#define BAUD_RATE 115200
 
 
 // DAC and ADC pin on arduino Due
