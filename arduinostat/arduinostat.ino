@@ -35,10 +35,11 @@ int pcom = 0;           // (0 ~ 4095)
 int pstart = 0;         // (0 ~ 4095)
 int pend = 0;           // (0 ~ 4095)
 int pstep = 1;          // (1 ~ 100)
+int eqltime = 0;        // (0 ~ 30)
 int const ndata = 10;   // number of data points to be averaged
 int cdata[ndata];       // array of data to be averaged
 float avgc = 0;         // average of the input/ADC
-String inputstr;        // input string to cast the user input
+String inputstr;        // input string to cast the user input            
 
 void setup() {
   // setting up the device
@@ -61,7 +62,7 @@ void setup() {
   Serial.print(",");
   Serial.print(VERSION);
   Serial.print(",");
-  Serial.println("READY,,,,");
+  Serial.println("READY,X,X,X");
   delay(500);
 }
 
@@ -71,12 +72,21 @@ void loop() {
   delay(500);
   digitalWrite(LED_BUILTIN, LOW);
   delay(500);
-  broadcast(false);
+  broadcast(false, true);
   
   // check for inputs and respond accordingly
   inputs = get_inputs();
   if (inputs > 0 && halt == 0) {
     inputs = 0;
+
+    // wait for equilibration time
+    for (int i = 0; i < eqltime; i++) {
+      rvdgt = pstart;
+      dataReadWrite(10);
+      broadcast(false, false);
+      delay(990);
+    }  
+    
     switch(mode) {
       // if mode = 0 then LSV
       case 0:
@@ -85,7 +95,7 @@ void loop() {
         } else {
           reverseScanLSV();
         }
-        broadcast(false);
+        broadcast(false, true);
         break;
 
       // if mode = 1 then CV
@@ -97,7 +107,7 @@ void loop() {
             reverseScanCV();
           }
         }
-        broadcast(false);
+        broadcast(false, true);
         break;
     }
   }  
@@ -113,10 +123,10 @@ void forwardScanLSV() {
     if (inputs > 0 && halt == 1) { break; }
     
     // else data write and read    
-    dataReadWrite();
+    dataReadWrite(interval);
     
     // send data to the serial    
-    broadcast(true);
+    broadcast(true, false);
   }
 }
 
@@ -129,10 +139,10 @@ void reverseScanLSV() {
     if (inputs > 0 && halt == 1) { break; }
 
     // else data write and read    
-    dataReadWrite();
+    dataReadWrite(interval);
 
     // send data to the serial
-    broadcast(true);
+    broadcast(true, false);
   }
 }
 
@@ -145,10 +155,10 @@ void forwardScanCV() {
     if (inputs > 0 && halt == 1) { break; }
     
     // else data write and read    
-    dataReadWrite();
+    dataReadWrite(interval);
     
     // send data to the serial    
-    broadcast(true);
+    broadcast(true, false);
   }
 
   for(rvdgt = pend; rvdgt >= pstart && halt == 0; rvdgt -= pstep)
@@ -158,10 +168,10 @@ void forwardScanCV() {
     if (inputs > 0 && halt == 1) { break; }
     
     // else data write and read    
-    dataReadWrite();
+    dataReadWrite(interval);
     
     // send data to the serial    
-    broadcast(true);
+    broadcast(true, false);
   }
 }
 
@@ -174,10 +184,10 @@ void reverseScanCV() {
     if (inputs > 0 && halt == 1) { break; }
 
     // else data write and read    
-    dataReadWrite();
+    dataReadWrite(interval);
 
     // send data to the serial
-    broadcast(true);
+    broadcast(true, false);
   }
 
   for(rvdgt = pend; rvdgt <= pstart && halt == 0; rvdgt += pstep)
@@ -187,10 +197,10 @@ void reverseScanCV() {
     if (inputs > 0 && halt == 1) { break; }
 
     // else data write and read    
-    dataReadWrite();
+    dataReadWrite(interval);
 
     // send data to the serial
-    broadcast(true);
+    broadcast(true, false);
   }
 }
 
@@ -202,11 +212,11 @@ float average(int numbers[], int count) {
   return ((float)sum / count);
 }
 
-void dataReadWrite() {
+void dataReadWrite(int delaytime) {
   // Change read/write resolution
   analogWrite(DAC_OUT_R,rvdgt); // set potential at the RE
   analogWrite(DAC_OUT_W,pcom);  // set potential at the WE
-  pause(); // wait
+  applyDelay(delaytime); // wait
   
   // get data and average
   for (int i = 0; i < ndata; i++) {
@@ -230,12 +240,8 @@ void softReset() {
 }
 
 void resetPotentials() {
-  analogWrite(DAC_OUT_R,rvdgt); // set rvdgtential and
-  analogWrite(DAC_OUT_W,pcom); // set rvdgtential and
-  delay(50); // wait
-  vdgt = analogRead(ADC_IN_V);
-  vdgt = vdgt * MAX_DAC / MAX_ADC;
-  avgc = analogRead(ADC_IN_C);
+  softReset();
+  dataReadWrite(1);
 }
 
 int get_inputs() {
@@ -252,21 +258,22 @@ int get_inputs() {
       }
     }
     
-    // s => "interval,halt,mode, ncycles, pcom, pstart,pend,pstep"
+    // s => "interval,halt,mode, ncycles, pcom, pstart,pend,pstep,eqltime"
     result = sscanf(inputstr.c_str(), 
-      "%d,%d,%d,%d,%d,%d,%d,%d\r", 
-      &interval, &halt ,&mode, &ncycles, &pcom, &pstart, &pend, &pstep);
+      "%d,%d,%d,%d,%d,%d,%d,%d,%d\r", 
+      &interval, &halt ,&mode, &ncycles, &pcom, &pstart, &pend, &pstep, &eqltime);
   }
   return result;
 }
 
-void broadcast(bool is_running) {
-  if (is_running) {
+void broadcast(bool isRunning, bool isReset) {
+  if (isRunning) {
     Serial.print(1);
-  } else {
-    softReset();
+  } else if (isReset){
     resetPotentials();
     Serial.print(0);
+  } else {
+    Serial.print(-1);
   }
   Serial.print(",");
   Serial.print(rvdgt);
@@ -277,10 +284,11 @@ void broadcast(bool is_running) {
   Serial.print(",");
   Serial.print(interval);
   Serial.print(",");
+  Serial.print(eqltime);
   Serial.println();
 }
 
-void pause() {
-  delay(interval - 1);
+void applyDelay(int delaytime) {
+  delay(delaytime - 1);
   delayMicroseconds(780);
 }
