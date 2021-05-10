@@ -80,12 +80,15 @@ void loop() {
     inputs = 0;
 
     // wait for equilibration time
-    for (int i = 0; i < eqltime; i++) {
+    for (int i = 0; i < eqltime; eqltime--) {
       rvdgt = pstart;
       dataReadWrite(10);
       broadcast(false, false);
       delay(990);
-    }  
+    } 
+
+    // reset eqltime    
+    eqltime = 0;
     
     switch(mode) {
       // if mode = 0 then LSV
