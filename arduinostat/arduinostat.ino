@@ -79,9 +79,15 @@ void loop() {
   if (inputs > 0 && halt == 0) {
     inputs = 0;
 
+    // otherwise get current at pstart      
+    rvdgt = pstart;
+      
     // wait for equilibration time
     for (int i = 0; i < eqltime; eqltime--) {
-      rvdgt = pstart;
+      // if halt then break
+      inputs = get_inputs();
+      if (inputs > 0 && halt == 1) { break; }
+
       dataReadWrite(10);
       broadcast(false, false);
       delay(990);
