@@ -15,6 +15,8 @@
 #define MAX_DAC 4096
 #define BAUD_RATE 115200
 
+// Relay switch for parallel feedback resistor
+int FR_RELAY = 8;
 
 // DAC and ADC pin on arduino Due
 int DAC_OUT_R = DAC0;   // DAC (12 bit for voltage output)
@@ -36,6 +38,7 @@ int pstart = 0;         // (0 ~ 4095)
 int pend = 0;           // (0 ~ 4095)
 int pstep = 1;          // (1 ~ 100)
 int eqltime = 0;        // (0 ~ 30)
+int hcurrent = 0;       // (0 or 1)
 int const ndata = 10;   // number of data points to be averaged
 int cdata[ndata];       // array of data to be averaged
 float avgc = 0;         // average of the input/ADC
@@ -44,6 +47,9 @@ String inputstr;        // input string to cast the user input
 void setup() {
   // setting up the device
   Serial.begin(BAUD_RATE);
+
+  pinMode(FR_RELAY, OUTPUT);
+  digitalWrite(FR_RELAY, LOW);
   
   pinMode(DAC_OUT_R,OUTPUT);
   pinMode(DAC_OUT_W,OUTPUT);
@@ -79,6 +85,15 @@ void loop() {
   if (inputs > 0 && halt == 0) {
     inputs = 0;
 
+    // turn on the relay if the hight current is 
+    // set to 1 else turn off the relay
+    if (hcurrent == 0) {
+      digitalWrite(FR_RELAY, LOW);
+    } 
+    else if (hcurrent == 1) {
+      digitalWrite(FR_RELAY, HIGH);
+    }
+    
     // otherwise get current at pstart      
     rvdgt = pstart;
       
@@ -267,10 +282,10 @@ int get_inputs() {
       }
     }
     
-    // s => "interval,halt,mode, ncycles, pcom, pstart,pend,pstep,eqltime"
+    // s => "interval,halt,mode, ncycles, pcom, pstart,pend,pstep,eqltime, hcurrent"
     result = sscanf(inputstr.c_str(), 
-      "%d,%d,%d,%d,%d,%d,%d,%d,%d\r", 
-      &interval, &halt ,&mode, &ncycles, &pcom, &pstart, &pend, &pstep, &eqltime);
+      "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\r", 
+      &interval, &halt ,&mode, &ncycles, &pcom, &pstart, &pend, &pstep, &eqltime, &hcurrent);
   }
   return result;
 }
